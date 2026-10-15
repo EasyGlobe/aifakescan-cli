@@ -79,6 +79,45 @@ func TestErrorRedactionAndExitCodes(t *testing.T) {
 		t.Fatal("unsafe id")
 	}
 }
+
+func TestUploadErrorsRemainServiceFailures(t *testing.T) {
+	for _, status := range []int{400, 401, 403, 429, 500, 503} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			if got := Exit(&Error{Status: status, Code: "upload_failed"}); got != 6 {
+				t.Fatalf("upload HTTP %d exit = %d, want 6", status, got)
+			}
+		})
+	}
+	if got := Exit(&Error{Status: 401, Code: "invalid_token"}); got != 3 {
+		t.Fatalf("API invalid_token exit = %d, want 3", got)
+	}
+}
+
+func TestUploadRejectionDoesNotExposeStorageResponse(t *testing.T) {
+	for _, status := range []int{401, 403} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Authorization") != "" || r.Header.Get("X-Scan-Token") != "" {
+					t.Error("credentials sent to upload destination")
+				}
+				w.WriteHeader(status)
+				w.Write([]byte(`<Error><Message>private-storage-detail</Message></Error>`))
+			}))
+			defer s.Close()
+			c, _ := New(s.URL, true)
+			err := c.Upload(context.Background(), s.URL+"/private-upload-path?X-Amz-Signature=synthetic-secret", "PUT", "image/png", 1, strings.NewReader("x"))
+			if Code(err) != "upload_failed" || Exit(err) != 6 {
+				t.Fatalf("wrong upload rejection: %v", err)
+			}
+			for _, forbidden := range []string{s.URL, "private-upload-path", "synthetic-secret", "private-storage-detail", "<Error>"} {
+				if strings.Contains(err.Error(), forbidden) {
+					t.Fatal("upload error exposed storage response or destination")
+				}
+			}
+		})
+	}
+}
+
 func TestTokenResponseValidation(t *testing.T) {
 	x := Token{AccessToken: "afs_guest_synthetic", TokenType: "Bearer", ExpiresIn: 1}
 	if x.Validate(true) == nil {

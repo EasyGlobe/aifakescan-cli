@@ -266,6 +266,110 @@ func TestParallelBatchSavesAndPartialFailure(t *testing.T) {
 	}
 }
 
+func TestBatchClassifiesStorageRejectionSeparatelyFromAPILogin(t *testing.T) {
+	cases := []struct {
+		name, failureAt, errorCode, savedState string
+		status, exit                           int
+		login                                  bool
+	}{
+		{"storage unauthorized", "upload", "upload_failed", "uploading", 401, 6, false},
+		{"storage forbidden", "upload", "upload_failed", "uploading", 403, 6, false},
+		{"API invalid token", "create", "invalid_token", "creating", 401, 3, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			v := guestVault()
+			var endpoint string
+			var mu sync.Mutex
+			creates, recoveries, uploads := 0, 0, 0
+			recovered := false
+			a, s := newTestApp(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				defer mu.Unlock()
+				switch {
+				case r.URL.Path == "/v1/quota":
+					w.Write([]byte(`{"kind":"guest","remaining":3,"max_in_flight":1}`))
+				case r.URL.Path == "/v1/scans":
+					creates++
+					if tc.failureAt == "create" {
+						w.WriteHeader(tc.status)
+						w.Write([]byte(`{"detail":{"code":"invalid_token"}}`))
+						return
+					}
+					json.NewEncoder(w).Encode(api.Created{ScanID: fmt.Sprintf("scan_%d", creates), OwnerToken: "synthetic_owner", UploadURL: endpoint + "/upload?X-Amz-Signature=synthetic-secret", UploadMethod: "PUT"})
+				case r.URL.Path == "/v1/scans/recover":
+					recoveries++
+					json.NewEncoder(w).Encode(api.Created{ScanID: "scan_1", OwnerToken: "rotated_owner", UploadURL: endpoint + "/upload", UploadMethod: "PUT"})
+				case r.URL.Path == "/upload":
+					uploads++
+					io.Copy(io.Discard, r.Body)
+					if !recovered {
+						w.WriteHeader(tc.status)
+						w.Write([]byte(`<Error><Message>private-storage-detail</Message></Error>`))
+					}
+				case strings.HasSuffix(r.URL.Path, "/uploaded"):
+					w.Write([]byte(`{}`))
+				default:
+					json.NewEncoder(w).Encode(api.Report{ID: filepath.Base(r.URL.Path), Status: "complete", Result: &api.Result{Verdict: "inconclusive"}})
+				}
+			}), v)
+			defer s.Close()
+			endpoint = s.URL
+			var items []*batch.Item
+			for i := 0; i < 2; i++ {
+				p := filepath.Join(t.TempDir(), "photo.jpg")
+				os.WriteFile(p, []byte("synthetic"), 0600)
+				x, err := batch.Discover([]string{p}, false, 0)
+				if err != nil {
+					t.Fatal(err)
+				}
+				items = append(items, x[0])
+			}
+			b := batch.New(endpoint, items)
+			code, err := a.runBatch(context.Background(), b, options{format: "jsonl", concurrency: 1})
+			if code != tc.exit || api.Code(err) != tc.errorCode {
+				t.Fatalf("exit=%d error=%v, want exit=%d code=%s", code, err, tc.exit, tc.errorCode)
+			}
+			stderr := a.Err.(*bytes.Buffer).String()
+			if strings.Contains(stderr, "aifakescan auth login") != tc.login || !strings.Contains(stderr, "aifakescan batch resume "+b.ID) {
+				t.Fatal("wrong recovery guidance")
+			}
+			output := stderr + a.Out.(*bytes.Buffer).String() + err.Error()
+			for _, forbidden := range []string{endpoint, "synthetic-secret", "private-storage-detail", "<Error>"} {
+				if strings.Contains(output, forbidden) {
+					t.Fatal("storage details exposed in output")
+				}
+			}
+			saved, err := batch.Load(a.Dir, b.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if saved.Items[0].State != tc.savedState || saved.Items[1].State != "pending" {
+				t.Fatal("blocked task was marked failed or subsequent work started")
+			}
+			mu.Lock()
+			initialCreates := creates
+			recovered = true
+			mu.Unlock()
+			if initialCreates != 1 {
+				t.Fatal("batch continued after blocking error")
+			}
+			if tc.failureAt == "upload" {
+				code, err = a.runBatch(context.Background(), saved, options{format: "jsonl", concurrency: 1})
+				if code != 0 || err != nil {
+					t.Fatalf("resume failed: exit=%d error=%v", code, err)
+				}
+				mu.Lock()
+				countsCorrect := creates == 2 && recoveries == 1 && uploads == 3
+				mu.Unlock()
+				if !countsCorrect || saved.Items[0].State != "complete" || saved.Items[1].State != "complete" {
+					t.Fatal("resume did not recover the existing scan and finish both files")
+				}
+			}
+		})
+	}
+}
+
 func TestGuestQuotaThenLoginResumesOnlyUncreatedFourthFile(t *testing.T) {
 	v := guestVault()
 	var endpoint string
