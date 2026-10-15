@@ -53,7 +53,9 @@ func Exit(err error) int {
 		case "guest_quota_exhausted", "login_required", "auth_required", "invalid_token", "session_expired", "invalid_grant", "access_denied", "expired_token", "verification_required", "refresh_already_used", "refresh_reuse_detected":
 			return 3
 		}
-		if e.Code == "recovery_conflict" {
+		// Upload status belongs to object storage, not the API login session.
+		// Keep the batch resumable even when storage responds with 401/403.
+		if e.Code == "recovery_conflict" || e.Code == "upload_failed" {
 			return 6
 		}
 		if e.Status == 401 || e.Status == 403 {
@@ -110,7 +112,7 @@ func (c *Client) Request(ctx context.Context, method, path, token, owner, key st
 			return 0, errors.New("invalid request")
 		}
 		req.Header.Set("Accept", "application/vnd.aifakescan.cli.v1+json")
-		req.Header.Set("User-Agent", "aifakescan-cli/0.1.0-beta.1")
+		req.Header.Set("User-Agent", "aifakescan-cli/0.1.0-beta.2")
 		if in != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}

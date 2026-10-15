@@ -16,7 +16,7 @@ out = pathlib.Path(os.environ.get("RELEASE_OUTPUT_DIR", str(root / "dist")))
 if out.exists() and any(out.iterdir()):
     raise SystemExit("release output directory must be empty; use RELEASE_OUTPUT_DIR for a fresh directory")
 out.mkdir(parents=True, exist_ok=True)
-version = os.environ.get("RELEASE_TAG", "v0.1.0-beta.1")
+version = os.environ.get("RELEASE_TAG", "v0.1.0-beta.2")
 if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.-]+)?", version):
     raise SystemExit("invalid release tag")
 modules = runtime_modules(root, dict(os.environ))

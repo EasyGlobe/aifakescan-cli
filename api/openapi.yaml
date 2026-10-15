@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AIFakeScan public CLI protocol",
-    "version": "0.1.0-beta.1",
+    "version": "0.1.0-beta.2",
     "description": "Manually maintained client-facing contract. This document excludes service implementation and detector internals. Report fields are evidence, not proof of authenticity. Every request sends Accept: application/vnd.aifakescan.cli.v1+json to select the reviewed public report DTO; this format header never bypasses authentication."
   },
   "servers": [
