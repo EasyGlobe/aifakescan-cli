@@ -14,6 +14,6 @@ Before publishing the first public tag:
 8. Confirm server concurrency/ownership/quota and global cost tests, exact production service version, feature flag and rollback capability. A client mock test or HTTP 200 is not this proof.
 9. Review the draft assets, verify SHA-256 and build provenance, and retain the release-to-commit and production-to-commit evidence before publishing.
 
-The workflow includes dependency inventory in SPDX 2.3 form. It describes the resolved module graph, which may include test-only dependencies; it is not a claim that every module is linked into every platform binary.
+The workflow downloads module sources before collecting SPDX 2.3 and license files. Inventory is the union of modules reached by `go list -deps ./cmd/aifakescan` for all six release targets; test-only dependencies are excluded. It is not a claim that every union member is linked into every platform binary. A missing or empty runtime-module license aborts packaging. Output must be a fresh empty directory; `RELEASE_OUTPUT_DIR` can select one.
 
 A current implementation limitation is that refresh-response loss requires a fresh interactive sign-in. Data/recovery credentials are preserved. If a user loses all guest ownership credentials, the CLI cannot bypass ownership checks to retrieve or delete those scans.
