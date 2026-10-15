@@ -24,7 +24,7 @@ jobs:
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]] || exit 1
           [[ "$EXPECTED_COMMIT" =~ ^[a-f0-9]{40}$ ]] || exit 1
           [[ "$EXPECTED_COMMIT" == "$ACTUAL_COMMIT" ]] || { echo 'Reviewed commit mismatch'; exit 1; }
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.expected_commit }}
           persist-credentials: false
