@@ -21,7 +21,7 @@ import (
 	"github.com/EasyGlobe/aifakescan-cli/internal/store"
 )
 
-const Version = "0.1.0-beta"
+const Version = "0.1.0-beta.1"
 const Policy = "2026-10-15"
 
 type App struct {

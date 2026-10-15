@@ -20,6 +20,12 @@ jobs:
         with:
           go-version: '1.27.2'
           cache: false
+      - run: python -m unittest discover -s scripts -p "test_*.py"
+      - name: Cross-platform license inventory with an empty module cache
+        if: runner.os == 'Linux'
+        run: python -m unittest discover -s scripts -p "test_*.py"
+        env:
+          AIFAKESCAN_TEST_EMPTY_MODULE_CACHE: '1'
       - run: go test -race ./...
       - run: go vet ./...
       - run: go build -trimpath ./cmd/aifakescan

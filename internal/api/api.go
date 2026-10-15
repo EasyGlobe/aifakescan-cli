@@ -110,7 +110,7 @@ func (c *Client) Request(ctx context.Context, method, path, token, owner, key st
 			return 0, errors.New("invalid request")
 		}
 		req.Header.Set("Accept", "application/vnd.aifakescan.cli.v1+json")
-		req.Header.Set("User-Agent", "aifakescan-cli/0.1.0-beta")
+		req.Header.Set("User-Agent", "aifakescan-cli/0.1.0-beta.1")
 		if in != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}

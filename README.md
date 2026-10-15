@@ -6,16 +6,33 @@ A small open-source client for **batch cloud checks of images and videos**. It u
 
 Results are `likely_ai`, `inconclusive`, or `no_strong_evidence`. None proves authenticity. Video results describe sampled coverage; categories marked `not_tested` were not checked. Uncalibrated detector scores are not presented as probabilities.
 
-## Install from source
+## Install a published beta
 
-Use Go 1.25 or later; CI pins Go 1.27.2. This repository builds independently of the service:
+Download binaries only from this repository's [GitHub Releases](https://github.com/EasyGlobe/aifakescan-cli/releases). The next planned version is `v0.1.0-beta.1`; these download steps become available when its draft has passed acceptance and is published. A draft release is not a public installation channel.
+
+Choose the archive matching your OS and CPU: macOS/Linux `amd64` or `arm64`, or Windows `amd64` or `arm64`. Also download `SHA256SUMS`. For example, after publication on an Apple Silicon Mac:
+
+```sh
+gh release download v0.1.0-beta.1 --repo EasyGlobe/aifakescan-cli \
+  --pattern aifakescan-v0.1.0-beta.1-darwin-arm64.tar.gz --pattern SHA256SUMS
+shasum -a 256 aifakescan-v0.1.0-beta.1-darwin-arm64.tar.gz
+# Compare the digest with the matching filename in SHA256SUMS before extracting.
+gh attestation verify aifakescan-v0.1.0-beta.1-darwin-arm64.tar.gz \
+  --repo EasyGlobe/aifakescan-cli \
+  --signer-workflow EasyGlobe/aifakescan-cli/.github/workflows/release.yml \
+  --source-ref refs/tags/v0.1.0-beta.1 --deny-self-hosted-runners
+tar -xzf aifakescan-v0.1.0-beta.1-darwin-arm64.tar.gz
+./aifakescan-v0.1.0-beta.1-darwin-arm64/aifakescan version
+```
+
+For strict commit verification, add `--source-digest` with the release commit recorded in the release notes. On Linux use `sha256sum`; on Windows use PowerShell `Get-FileHash -Algorithm SHA256` and extract the ZIP. Keep the included license texts. No installer downloads and executes an update script.
+
+Alternatively, build independently from this public repository using Go 1.25 or later (CI pins Go 1.27.2):
 
 ```sh
 go build -trimpath -o aifakescan ./cmd/aifakescan
 ./aifakescan version
 ```
-
-Release binaries will be accompanied by SHA-256 checksums and provenance when the release gates pass. No installer downloads and executes an update script.
 
 ## Quick start
 
