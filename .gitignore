@@ -1,0 +1,8 @@
+/dist/
+/aifakescan
+/aifakescan.exe
+/coverage.out
+*.test
+.env
+.env.*
+.DS_Store

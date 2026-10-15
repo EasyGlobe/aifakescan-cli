@@ -1,0 +1,1191 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AIFakeScan public CLI protocol",
+    "version": "0.1.0-beta",
+    "description": "Manually maintained client-facing contract. This document excludes service implementation and detector internals. Report fields are evidence, not proof of authenticity. Every request sends Accept: application/vnd.aifakescan.cli.v1+json to select the reviewed public report DTO; this format header never bypasses authentication."
+  },
+  "servers": [
+    {
+      "url": "https://api.aifakescan.com"
+    }
+  ],
+  "paths": {
+    "/v1/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "description": "Current public service capability information.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capabilities"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/v1/guest-sessions": {
+      "post": {
+        "operationId": "createGuestSession",
+        "description": "Create a limited guest grant. Risk checks may return verification_required. Credentials and network share authoritative daily limits.",
+        "responses": {
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cli/device-authorizations": {
+      "post": {
+        "operationId": "createDeviceAuthorization",
+        "description": "Request a device code. Show the official URI and short code; never automatically approve or open a browser.",
+        "responses": {
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceAuthorization"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device_name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "device_name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cli/token": {
+      "post": {
+        "operationId": "exchangeToken",
+        "description": "Exchange a device authorization or rotate a refresh token. Poll only at the advertised interval; pending and slow_down are public OAuth errors.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "grant_type": {
+                        "const": "urn:ietf:params:oauth:grant-type:device_code"
+                      },
+                      "device_code": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "grant_type",
+                      "device_code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "grant_type": {
+                        "const": "refresh_token"
+                      },
+                      "refresh_token": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "grant_type",
+                      "refresh_token"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cli/sessions": {
+      "get": {
+        "operationId": "listSessions",
+        "description": "List only the authenticated account sessions.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Session"
+                      }
+                    }
+                  },
+                  "required": [
+                    "sessions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/cli/sessions/{session_id}": {
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        }
+      ],
+      "delete": {
+        "operationId": "revokeSession",
+        "description": "Revoke only a session owned by this account.",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/cli/logout": {
+      "post": {
+        "operationId": "logout",
+        "description": "Revoke the current CLI account session.",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota": {
+      "get": {
+        "operationId": "getQuota",
+        "description": "Authoritative current UTC-day quota. Reset_at is server time; a guest network budget can be lower than the individual grant balance.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quota"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/scans": {
+      "post": {
+        "operationId": "createScan",
+        "description": "Atomically reserve an authorized task. Identical principal/key/request must recover the same task; conflicts return 409. This basic client never selects paid/deep modes.",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanCreated"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/scans/recover": {
+      "post": {
+        "operationId": "recoverScan",
+        "description": "Recover by the original guest/account principal and idempotency key without another quota reservation. Guest owner token may rotate. Upload URL is absent after bytes were accepted.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanCreated"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "idempotency_key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "idempotency_key"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/scans/{scan_id}": {
+      "get": {
+        "operationId": "getReport",
+        "description": "Read a private report while available; expiry does not delete retained media.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "scanOwner": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Scan-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Guest owner credential; required for a guest-owned task, including account claim."
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "deleteScan",
+        "description": "Delete cloud media and analysis. HTTP 202 means deletion is pending; repeat to observe 204 confirmation. Local reports are unaffected.",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Deletion is pending. Retain ownership credentials and retry."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "scanOwner": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Scan-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Guest owner credential; required for a guest-owned task, including account claim."
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "name": "scan_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        }
+      ]
+    },
+    "/v1/scans/{scan_id}/uploaded": {
+      "post": {
+        "operationId": "confirmUpload",
+        "description": "Confirm the whole-file upload; repeated confirmations must not enqueue another analysis.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "scanOwner": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Scan-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Guest owner credential; required for a guest-owned task, including account claim."
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "name": "scan_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        }
+      ]
+    },
+    "/v1/scans/{scan_id}/claim": {
+      "post": {
+        "operationId": "claimScan",
+        "description": "Explicitly associate a guest scan with the authenticated account, using the guest owner token. The old owner token becomes invalid; quota is unchanged.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Stable public error code; do not log credentials or response URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Scan-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Guest owner credential; required for a guest-owned task, including account claim."
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "name": "scan_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        }
+      ]
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Guest grant or account CLI access token; never a backend secret."
+      },
+      "scanOwner": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Scan-Token"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "Token": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string",
+            "enum": [
+              "Bearer"
+            ]
+          },
+          "expires_in": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subject": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in"
+        ],
+        "additionalProperties": false
+      },
+      "DeviceAuthorization": {
+        "type": "object",
+        "properties": {
+          "device_code": {
+            "type": "string"
+          },
+          "user_code": {
+            "type": "string"
+          },
+          "verification_uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "expires_in": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "interval": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "device_code",
+          "user_code",
+          "verification_uri",
+          "expires_in",
+          "interval"
+        ],
+        "additionalProperties": false
+      },
+      "Quota": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reserved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "remaining": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "video_limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "video_used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "video_reserved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "in_flight": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_in_flight": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_video_in_flight": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "guest",
+              "account"
+            ]
+          },
+          "reset_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "network_remaining": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "required": [
+          "kind",
+          "limit",
+          "remaining",
+          "max_in_flight",
+          "reset_at"
+        ],
+        "additionalProperties": false
+      },
+      "ScanRequest": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 209715200
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "basic"
+            ]
+          },
+          "analysis_profile": {
+            "type": "string",
+            "enum": [
+              "standard"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "filename",
+          "size",
+          "content_type",
+          "media_type",
+          "mode",
+          "analysis_profile",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "ScanCreated": {
+        "type": "object",
+        "properties": {
+          "scan_id": {
+            "type": "string"
+          },
+          "owner_token": {
+            "type": "string",
+            "description": "Guest only. Persist securely before uploading. Recover rotates it."
+          },
+          "upload_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Present only while awaiting upload. HTTPS R2 PUT URL; never attach API credentials."
+          },
+          "upload_method": {
+            "type": "string",
+            "enum": [
+              "PUT"
+            ]
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "scan_id",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "Evidence": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "strength": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "Result": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "likely_ai",
+              "inconclusive",
+              "no_strong_evidence"
+            ]
+          },
+          "authenticity_proven": {
+            "const": false
+          },
+          "probability": {
+            "type": "null"
+          },
+          "scan_depth": {
+            "type": "string"
+          },
+          "coverage": {
+            "type": "object",
+            "properties": {
+              "provenance": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "partial",
+                  "not_tested",
+                  "not_applicable",
+                  "failed"
+                ]
+              },
+              "visible_watermark": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "partial",
+                  "not_tested",
+                  "not_applicable",
+                  "failed"
+                ]
+              },
+              "generated": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "partial",
+                  "not_tested",
+                  "not_applicable",
+                  "failed"
+                ]
+              },
+              "manipulated": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "partial",
+                  "not_tested",
+                  "not_applicable",
+                  "failed"
+                ]
+              },
+              "ai_audio": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "partial",
+                  "not_tested",
+                  "not_applicable",
+                  "failed"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "decision_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            }
+          }
+        },
+        "required": [
+          "verdict",
+          "authenticity_proven",
+          "probability",
+          "coverage",
+          "limitations"
+        ],
+        "additionalProperties": false
+      },
+      "Report": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "const": "1"
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "analysis_profile": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Result"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "media_retention": {
+            "const": "until_explicit_deletion"
+          },
+          "sha256": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "device_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string"
+          },
+          "revoked_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "Capabilities": {
+        "type": "object",
+        "properties": {
+          "cli": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "schema_version": {
+                "const": "1"
+              },
+              "limits": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

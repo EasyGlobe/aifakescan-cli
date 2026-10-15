@@ -1,0 +1,76 @@
+name: Reviewed draft release
+# Manual only: dispatch this workflow at the reviewed release tag.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit:
+        description: Exact reviewed 40-character commit SHA; must match the dispatched tag
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the reviewed tagged commit
+        env:
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          ACTUAL_COMMIT: ${{ github.sha }}
+          REF_TYPE: ${{ github.ref_type }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$REF_TYPE" == tag ]] || { echo 'Dispatch at an existing reviewed tag'; exit 1; }
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]] || exit 1
+          [[ "$EXPECTED_COMMIT" =~ ^[a-f0-9]{40}$ ]] || exit 1
+          [[ "$EXPECTED_COMMIT" == "$ACTUAL_COMMIT" ]] || { echo 'Reviewed commit mismatch'; exit 1; }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.expected_commit }}
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.27.2'
+          cache: false
+      - run: go test -race ./...
+      - run: go vet ./...
+      - run: python3 scripts/package.py
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: reviewed-public-assets
+          path: dist/*
+          if-no-files-found: error
+  draft:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: reviewed-public-assets
+          path: dist
+      - uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        with:
+          subject-path: dist/*
+      - name: Create draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]] || exit 1
+          reference=$(gh api "repos/$REPO/git/ref/tags/$RELEASE_TAG" --jq '[.object.type,.object.sha] | @tsv')
+          read -r object_type object_sha <<< "$reference"
+          for depth in 1 2 3 4; do
+            [[ "$object_type" != tag ]] && break
+            reference=$(gh api "repos/$REPO/git/tags/$object_sha" --jq '[.object.type,.object.sha] | @tsv')
+            read -r object_type object_sha <<< "$reference"
+          done
+          [[ "$object_type" == commit && "$object_sha" == "$EXPECTED_COMMIT" ]] || { echo 'Release tag moved away from the reviewed commit'; exit 1; }
+          gh release create "$RELEASE_TAG" dist/* --repo "$REPO" --verify-tag --draft --prerelease --title "$RELEASE_TAG" --notes 'Draft beta. Do not publish until the documented release acceptance gates pass.'
