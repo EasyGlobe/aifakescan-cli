@@ -1,10 +1,10 @@
 module github.com/EasyGlobe/aifakescan-cli
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/zalando/go-keyring v0.2.6
-	golang.org/x/sys v0.26.0
+	golang.org/x/sys v0.49.0
 )
 
 require (
